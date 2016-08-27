@@ -45,11 +45,7 @@ cabinet_parties_table <- merge(cabinet_portfolio_table,
                                  party[, c("pty_id", "pty_abr", "pty_n", "pty_n_en")],
                                  by="pty_id", all.x=T)
 
-head( cabinet_parties_table)
-cabinet_parties_table <- cabinet_parties_table %>%  arrange(cab_id, pty_id)
 cabinet_parties_table$cab_hog_n <- trimws(gsub("\t","", cabinet_parties_table$cab_hog_n))
-
-head(cabinet_parties_table)
 
 cabinet_parties_table <- cabinet_parties_table %>% 
   arrange(cab_id, pty_id) %>% 
@@ -67,11 +63,49 @@ cabinet_hog_table <- subset(cabinet_parties_table, pty_cab_hog==TRUE, -c(pty_id,
 
 head(cabinet_hog_table)
 
-# (3) join cabinet HOG data table on configuration-veto events table 
+cabinet_hog_table <- within(cabinet_hog_table, head_of_gov <-  paste(cab_hog_n, " (", pty_abr, ")",sep=""))
 
-configs <- merge(config_vetos,cabinet_hog_table,by=c("ctr_id","cab_id"),all.x=T)
+# (3) cabinet table with health minister party and start date information
+names(cabinet_table)
+cabinet_minsiters_table <- merge(cabinet_table,
+                                 subset(minister,min_hlth>0,c("cab_id", "pty_id", "min_sdate", "min_hlth")),
+                                 by="cab_id",all.y=T)
+minister_parties_table <- merge(cabinet_minsiters_table,
+                                party[, c("pty_id", "pty_abr", "pty_n", "pty_n_en")],
+                                by="pty_id", all.x=T)
+
+head(minister_parties_table)
+minister_parties_table$cab_hog_n <- trimws(gsub("\t","", minister_parties_table$cab_hog_n))
+
+minister_parties_table <- minister_parties_table %>% 
+  arrange(cab_id, pty_id) %>% 
+  group_by(cab_id) %>% 
+  mutate(hlth_minister_pty = paste(paste(pty_abr," (",min_sdate,")",sep=""), collapse=", ") ) %>%  # list all cabinet parties
+  as.data.frame()
+
+subset(minister_parties_table, ctr_id == 29, c(1:9,12))
+
+# keep code list with party abbreviations and names
+hlth_minister_parties <- unique(minister_parties_table[, c("ctr_ccode", "pty_abr", "pty_n", "pty_n_en")])
+
+# subset: keep only rows of HOG's party  
+cabinet_hlth_min_table <- unique(minister_parties_table[ , c("ctr_id", "cab_id", "cab_sdate", "hlth_minister_pty") ])
+
+subset(cabinet_hlth_min_table, ctr_id == 29)
+
+# join cabinet HOG table with cabinet health minsiter table
+cabinet_data_table <- merge(cabinet_hog_table,cabinet_hlth_min_table,by=c("ctr_id", "cab_id", "cab_sdate"), all.x=T)
+
+  cabinet_data_table <- cabinet_data_table %>% arrange(ctr_id, cab_sdate)
+  
+  subset(cabinet_data_table, ctr_id == 29)
+  names(cabinet_data_table)
+
+# (4) join cabinet data table on configuration-veto events table 
+configs <- merge(config_vetos,cabinet_data_table,by=c("ctr_id","cab_id"),all.x=T)
 head(configs)
 unique(veto_points_table$vto_inst_typ)
+
 # get names of veto variables 
 veto_variables <- colnames(configs)[grepl("vto_",colnames(configs))]
 veto_variables_labels <- c(vto_lh="lower house"
@@ -116,12 +150,13 @@ configs$open_veto_points <- ""  # create empty string vector
   configs$sdate <- as.Date(configs$sdate, format="%Y-%m-%d")
   
   # ctr_id can be dropped, is only internal identifier (use ISO character code instead)
-  configs <- configs[, c("ctr_ccode","sdate",
-                             "cab_hog_n","pty_abr","cab_sdate","in_cab",
-                             "cab_lh_sts_shr","vto_lh",
-                             "cab_uh_sts_shr","vto_uh",
-                             "vto_prs","vto_jud","vto_terr","vto_elct",
-                             "open_veto_points")]
+  configs <- configs[, c("ctr_ccode","sdate"
+                         ,"head_of_gov", "in_cab"
+                         ,"hlth_minister_pty"
+                         ,"cab_lh_sts_shr","vto_lh"
+                         ,"cab_uh_sts_shr","vto_uh"
+                         ,"vto_prs","vto_jud","vto_terr","vto_elct"
+                         ,"open_veto_points")]
   head(configs)
  
 
