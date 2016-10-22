@@ -1,9 +1,10 @@
 
 require(needs)
 needs(R.cache,dplyr,openxlsx)
+getwd()
 
 # (1) get data from PCDB
-setCacheRootPath(path="~/Documents/Humboldt/Electoral_Vulnerability/Projects/vaps-dashboard_public") 
+setCacheRootPath(path="~/Documents/Humboldt/HEALTHDOX/Country_Chapters/data/in/") 
 
 # load cached data list
 allPCDBObjects <- loadCache(key=list("PCDB","data"))   # key is PCDB + data

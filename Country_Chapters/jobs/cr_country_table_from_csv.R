@@ -4,6 +4,8 @@ needs(openxlsx,countrycode)
 Sys.getlocale(category = "LC_ALL")
 Sys.setlocale("LC_ALL", 'en_US.UTF-8')
 
+if ( sub(".*/","",getwd()) != "Country_Chapters" ) setwd("~/Documents/Humboldt/HEALTHDOX/Country_Chapters") ## set path to vaps-dashboard_public here ##
+
 REF <- read.xlsx("./data/in/France_Matthias_Brunn_MB_2016_08_23.xlsx")
 
 names(REF)
@@ -75,12 +77,10 @@ REF
 # source configurations-veto events dataframe with HOG information
 source("./jobs/cr_config_with_hog_and_veto_info.R")
 
-subset(mv_configuration_events,ctr_id==29)
   # clean global environment
-  rm(list=setdiff(ls(),c("configs","cab_parties","REF","Labels","veto_points_table")))
+  rm(list=setdiff(ls(),c("configs","cab_parties","hlth_minister_parties","REF","Labels","veto_points_table")))
 
 # source matchEventsonConfigs() function 
-  setwd("/Users/lichthau/Documents/Humboldt/HEALTHDOX/Country_Chapters")
 source("./jobs/matchEventsOnConfigs.R")
 
 # match reforms on configurations by date_law 
@@ -88,26 +88,29 @@ ReformConfigVtoEvents <- matchEventsOnConfigs(events = REF, event_dates_col = "d
                                            config_ts = configs, start_date_var = "sdate",
                                            group_var = "ctr_ccode")
 Encoding(ReformConfigVtoEvents$ref_name) <- "UTF-8"
-# ReformConfigVtoEvents$ref_name <- iconv(ReformConfigVtoEvents$ref_name, "UTF-8", "ISO-8859-1")
-
+Encoding(ReformConfigVtoEvents$ref_meas) <- "UTF-8"
 
 rm(configs)
-# list of all parties who where in reforming cabinets
-listOfPartiesInTable <- subset(cab_parties,subset= pty_abr %in% unique(unlist(strsplit(ReformConfigVtoEvents$in_cab, ", "))) & ctr_ccode=="FRA")
+
+# list of all parties who where in reforming cabinets and/or who were sponsoring the minister of health
+CabinetParties <- subset(cab_parties, subset = pty_abr %in% unique(unlist(strsplit(ReformConfigVtoEvents$in_cab, ", "))) & ctr_ccode=="FRA")
+HealthMinisterParties <- subset(hlth_minister_parties, subset = pty_abr %in% gsub("[^[a-zA-Z]|[.]]","",unique(unlist(strsplit(ReformConfigVtoEvents$hlth_minister_pty, ", "))) ) & ctr_ccode=="FRA")
+
+listOfPartiesInTable <- unique(rbind(CabinetParties ,HealthMinisterParties)) %>% arrange(pty_abr)
 names(listOfPartiesInTable) <- c("ISO-3-character Country Code", "Party Abbreviation", "Party Name", "Party Name in English") 
-rm(cab_parties)
 
+rm(cab_parties,hlth_minister_parties)
 
+# subset
 ReformConfigVtoEventsSub <- ReformConfigVtoEvents[,c("country", "year",
                                                  "ref_name_en", "ref_name", "date_law", "date_impl", 
-                                                 "cab_hog_n", "pty_abr", "in_cab", 
+                                                 "head_of_gov", "in_cab", "hlth_minister_pty", 
                                                  "cab_lh_sts_shr","vto_lh",
                                                  "cab_uh_sts_shr","vto_uh",
                                                  "vto_prs","vto_jud","vto_terr","vto_elct", "open_veto_points", 
                                                  "ref_meas")]
-class(ReformConfigVtoEventsSub)
 
-# 
+# column labels
 Labels
 attrLabels <- attr(Labels,"names")
 
@@ -120,9 +123,9 @@ rm(attrLabels)
 names(ReformConfigVtoEventsSub)[ names(ReformConfigVtoEventsSub) %in% names(Labels) ] <- Labels[ names(Labels) %in% names(ReformConfigVtoEventsSub) ]
 
 names(ReformConfigVtoEventsSub)[ grepl("_",names(ReformConfigVtoEventsSub)) ] <- c("Reform Name in English"
-                                                                                   , "Last Name of the Head of Government (Prime Minister)"
-                                                                                   , "Party of the Head of Government"
+                                                                                   , "Last Name of the Head of Government (Party)"
                                                                                    , "Parties in Cabinet"
+                                                                                   , "Party of Minister of Health (in office since)"
                                                                                    , "Cabinet Parties' Cumulated Seat Share in the Lower House", "Lower House Veto Point" 
                                                                                    , "Cabinet Parties' Cumulated Seat Share in the Upper House", "Upper House Veto Point" 
                                                                                    , "President Veto Point", "Judicial Veto Point", "Territorial Unit Veto Point", "Electorate Veto Point"
@@ -133,7 +136,7 @@ names(ReformConfigVtoEventsSub)
 FranceHandbookTable4 <- list("Reforms"=ReformConfigVtoEventsSub[,-c(11:17)],
                              "Reforms_detailed"=ReformConfigVtoEventsSub,
                              "Veto_Institutions"=subset(veto_points_table[,-1],ctr_ccode=="FRA"),
-                             "Cabinet_Parties" = listOfPartiesInTable)
+                             "Parties" = listOfPartiesInTable)
 str(FranceHandbookTable4)
 
 style_table <- createStyle(fontName = "Helvetica", fontSize = "12",
