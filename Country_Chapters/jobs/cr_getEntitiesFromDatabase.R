@@ -32,7 +32,6 @@ rm(path)
   dbuser <- "polconfdb_4"
   dbhost <- "moodledb.cms.hu-berlin.de"
   dbport <- "5432"
-  dbpass <-   "Zs%7f_+9;hcRRw" #"S8:kFG%6+u_Zrw" #
   
   # connect to PostgreSQL Server
   drv <- dbDriver("PostgreSQL") 
